@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # coding: utf-8
 #This script needs GRASS 6.4 to run and Python
 #Run this script from command line
@@ -34,58 +34,129 @@
 #                3 wind impacts on the surface in angles close to 90 or 90 degrees,
 #                that is perpendicularly (winward).
 #
-#
+# raw_input() deprecated now in python 3
+
+### version 0.2 for grass 8 (tested on 8.3)
+### standalone version. Please modify you GRASS data settings!
+### also notice that you might need to change your PATHs.
+### the environs.bat file is needed! Also take a look on it
  
 import os
 import sys
-grass_install_tree=os.getenv('GISBASE')
-sys.path.append(grass_install_tree+os.sep+'etc'+os.sep+'python')
-import grass.script as grass
- 
- 
-rasterWind=raw_input("Name of wind map: ")
+import subprocess
+from pathlib import Path
+
+# define GRASS data settings (adapt to your needs)
+gisdb = Path(r'D:\Documentos\Archivo_GRASS_R')
+location = "ciudadDeMexico"
+mapset = "pm25"
+
+
+# path to the GRASS GIS launch script
+# we assume that the GRASS GIS start script is available and on PATH
+# query GRASS itself for its GISBASE
+# (with fixes for specific platforms)
+# needs to be edited by the user
+executable = "grass"
+if sys.platform.startswith("win"):
+    # MS Windows
+    #executable = r"C:\Program Files\AppJ\QGIS 3.28.14\bin\grass83.bat"
+    # uncomment when using standalone WinGRASS installer
+    executable = r'C:\Program Files\AppJ\QGIS 3.28.14\bin\grass83.bat'
+    # this can be skipped if GRASS executable is added to PATH
+elif sys.platform == "darwin":
+    # Mac OS X
+    version = "8.3"
+    executable = f"/Applications/GRASS-{version}.app/Contents/Resources/bin/grass"
+
+# query GRASS GIS itself for its Python package path
+grass_cmd = [executable, "--config", "python_path"]
+process = subprocess.run(grass_cmd, check=True, text=True, stdout=subprocess.PIPE)
+
+# define GRASS-Python environment
+sys.path.append(process.stdout.strip())
+#
+qgis_folder = Path(r'C:\Program Files\AppJ\QGIS 3.28.14')
+# define bin path QGIS
+qgis_dlls = os.path.join(qgis_folder, "bin")
+sys.path.append(qgis_dlls)
+
+# import (some) GRASS Python bindings
+import grass.script as gs
+import grass.script.setup as gsetup
+
+# launch session
+session = gs.setup.init(gisdb, location, mapset)
+
+# example calls
+gs.message("Current GRASS GIS 8 environment:")
+print(gs.gisenv())
+
+# gs.message("Available raster maps:")
+# for rast in gs.list_strings(type="raster"):
+#      print(rast)
+
+# # gs.message("Available vector maps:")
+# # for vect in gs.list_strings(type="vector"):
+# #     print(vect)
+
+rasterWind=input("Name of wind map: ")
+
+#check twice if name of DEM or DTM (raster file) exists, otherwise return error
+filex=gs.find_file(rasterWind, element='cell')
+if not filex['fullname'] != '':
+        rasterWind=input("Raster file with the name"+" "+"<"+ rasterWind +">"+" "+"does not exist. Another try? : ")
+filex=gs.find_file(rasterWind, element='cell')
+if not filex['fullname'] != '':
+        rasterWind=input("Seriously"+" "+"<"+ rasterWind +">"+" "+"does not exist. Please choose another name: ")
+filex=gs.find_file(rasterWind, element='cell')
+if not filex['fullname'] != '':
+        gs.fatal(_("You have to check your files before using this script. Bye!!!"))
+
+rasterAspect=input("Name of aspect map: ")
  
 #check twice if name of DEM or DTM (raster file) exists, otherwise return error
-filex=grass.find_file(rasterWind, element='cell')
-if not filex['fullname'] != '':
-        rasterWind=raw_input("Raster file with the name"+" "+"<"+ rasterWind +">"+" "+"does not exist. Another try? : ")
-filex=grass.find_file(rasterWind, element='cell')
-if not filex['fullname'] != '':
-        rasterWind=raw_input("Seriously"+" "+"<"+ rasterWind +">"+" "+"does not exist. Please choose another name: ")
-filex=grass.find_file(rasterWind, element='cell')
-if not filex['fullname'] != '':
-        grass.fatal(_("You have to check your files before using this script. Bye!!!"))
- 
-rasterAspect=raw_input("Name of aspect map: ")
- 
-#check twice if name of DEM or DTM (raster file) exists, otherwise return error
-filey=grass.find_file(rasterAspect, element='cell')
+filey=gs.find_file(rasterAspect, element='cell')
 if not filey['fullname'] != '':
-        rasterAspect=raw_input("Raster file with the name"+" "+"<"+ rasterAspect +">"+" "+"does not exist. Another try? : ")
-filey=grass.find_file(rasterAspect, element='cell')
+        rasterAspect=input("Raster file with the name"+" "+"<"+ rasterAspect +">"+" "+"does not exist. Another try? : ")
+filey=gs.find_file(rasterAspect, element='cell')
 if not filey['fullname'] != '':
-        rasterAspect=raw_input("Seriously"+" "+"<"+ rasterAspect +">"+" "+"does not exist. Please choose another name: ")
-filey=grass.find_file(rasterAspect, element='cell')
+        rasterAspect=input("Seriously"+" "+"<"+ rasterAspect +">"+" "+"does not exist. Please choose another name: ")
+filey=gs.find_file(rasterAspect, element='cell')
 if not filey['fullname'] != '':
-        grass.fatal(_("You have to check your files before using this script. Bye!!!"))
- 
- 
+        gs.fatal(_("You have to check your files before using this script. Bye!!!"))
+
 #Reclassify Aspect map
-rFileA = r"reclassFileA"
+rFileA = r"rFileAspect.txt"
 reclassA="rasterAspect_reclass"
-print 'Reclassifiying'+' '+ rasterAspect +' '+'map'+' '+'into'+' '+'8'+' '+'regions'
-grass.run_command('r.reclass', overwrite=True, input=rasterAspect, output=reclassA, rules=rFileA)
+print ('Reclassifiying'+' '+ rasterAspect +' '+'map'+' '+'into'+' '+'8'+' '+'regions')
+gs.run_command('r.reclass', overwrite=True, input=rasterAspect, output=reclassA, rules=rFileA)
  
 #Reclassify Wind map
-rFileW = r"reclassFileW"
+rFileW = r"rFileWind.txt"
 reclassW="rasterWind_reclass"
-print 'Reclassifiying'+' '+ rasterWind +' '+'map'+' '+'into'+' '+'8'+' '+'regions'
-grass.run_command('r.reclass', overwrite=True, input=rasterWind, output=reclassW, rules=rFileW)
+print ('Reclassifiying'+' '+ rasterWind +' '+'map'+' '+'into'+' '+'8'+' '+'regions')
+gs.run_command('r.reclass', overwrite=True, input=rasterWind, output=reclassW, rules=rFileW)
  
 #Both maps are mixed with a simple sum
-print 'Adding'+' '+ rasterWind +' '+'to'+' '+ rasterAspect
+print ('Adding'+' '+ rasterWind +' '+'to'+' '+ rasterAspect)
 output="WindPLUSAspect"
-grass.mapcalc("$output = $reclassW + $reclassA", output=output, reclassW=reclassW, reclassA=reclassA)
+gs.mapcalc("$output = $reclassW + $reclassA", overwrite=True, output=output, reclassW=reclassW, reclassA=reclassA)
+ 
+#Reclassify new map with specific rules of azimuth contraposition
+rFileVS = r"rFileVS.txt"
+windVSaspect="windVSaspect_reclass"
+print ('Reclassifiying'+' '+ output +' '+'map'+' '+'into'+' '+'3'+' '+'categories')
+gs.run_command('r.reclass', overwrite=True, input=output, output=windVSaspect, rules=rFileVS)
+print ('DONE!')
+
+# verify result
+print ('Verifying resuls with r.category...')
+print ('\n',r'New map has the following categories>','\n')
+gs.run_command('r.category', map="windVSaspect_reclass")
+
+# clean up at the end
+session.finish()
  
 #Reclassify new map with specific rules of azimuth contraposition
 rFileVS = r"reclassFileVS"
