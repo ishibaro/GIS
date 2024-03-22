@@ -157,10 +157,3 @@ gs.run_command('r.category', map="windVSaspect_reclass")
 
 # clean up at the end
 session.finish()
- 
-#Reclassify new map with specific rules of azimuth contraposition
-rFileVS = r"reclassFileVS"
-windVSaspect="windVSaspect_reclass"
-print 'Reclassifiying'+' '+ output +' '+'map'+' '+'into'+' '+'3'+' '+'categories'
-grass.run_command('r.reclass', overwrite=True, input=output, output=windVSaspect, rules=rFileVS)
-print 'DONE!'
